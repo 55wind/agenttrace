@@ -14,6 +14,7 @@ from .guard import Guard
 # replication fires only when all three hold (§5.4). directive is the knob that
 # keeps a normal quoted reply (directive≈0) from being flagged.
 SIM_THRESHOLD = 0.80
+EMBED_THRESHOLD = 0.75              # 2차 보완: difflib 미달 시 의미 유사도로 변형 웜 포착
 DIRECTIVE_THRESHOLD = 0.16          # >= 1 of the directive patterns present
 HIGH_RISK = {"send", "exec", "autorun", "persist", "write"}
 
@@ -69,7 +70,10 @@ class Monitor:
             if src_id == replica_id:
                 continue
             sim = fp.similarity(src_text, text)
-            if sim >= SIM_THRESHOLD:
+            if sim < EMBED_THRESHOLD:                     # 변형 웜 보완: 의미 유사도 2차 확인
+                from . import embedding
+                sim = max(sim, embedding.similar(src_text, text))
+            if sim >= EMBED_THRESHOLD:
                 self.store.add_replication(src_id, replica_id, sim, d, next_action, eid)
                 newly = not self.store.artifact(replica_id)["infected"]
                 self.store.set_flag(replica_id, infected=True)

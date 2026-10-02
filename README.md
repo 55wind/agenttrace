@@ -26,6 +26,9 @@ agenttrace/
   engine.py       오염 추적·복제 탐지 (Monitor)
   trace.py        전파 그래프·역추적 (networkx)
   report.py       근거 기반 4단 보고
+  collector.py    Sysmon 로그 수집 (wevtutil, ID 1·3·11·13)
+  embedding.py    변형 웜 보완 유사도 (임베딩 선택 / stdlib 폴백)
+  mcp_server.py   읽기 전용 MCP 서버 (공식 mcp SDK, stdio, 도구 4종)
 demo.py           S1~S5 end-to-end
 tests/            자체 테스트
 ```
