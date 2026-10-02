@@ -1,0 +1,4 @@
+networkx>=3.0
+PyYAML>=6.0
+# dev
+pytest>=7.0

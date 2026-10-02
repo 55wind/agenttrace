@@ -1,0 +1,37 @@
+# AgentTrace guard policy. First matching rule wins; no match => allow.
+# Each rule: name, action (exec|write|send|autorun|*), pattern (regex on the
+# action's content/target, case-insensitive), verdict (allow|ask|block).
+# `tainted_escalate` lifts an allow/ask to `ask` when the session is tainted.
+
+rules:
+  - name: eicar-test-string
+    action: "*"
+    pattern: "EICAR-STANDARD-ANTIVIRUS-TEST-FILE"
+    verdict: block
+
+  - name: encoded-powershell
+    action: exec
+    pattern: "powershell.*-e(nc|ncodedcommand)?\\b"
+    verdict: block
+
+  - name: remote-code-exec
+    action: exec
+    pattern: "(iex|invoke-expression|downloadstring|certutil\\s+-urlcache|curl.*\\|\\s*(ba)?sh)"
+    verdict: block
+
+  - name: credential-access
+    action: exec
+    pattern: "(mimikatz|lsass|\\.aws[\\\\/]credentials|id_rsa|\\.ssh[\\\\/])"
+    verdict: ask
+
+  - name: autorun-registration
+    action: autorun
+    pattern: ".*"
+    verdict: ask
+
+  - name: outbound-send
+    action: send
+    pattern: ".*"
+    verdict: allow          # allowed by default, but escalated when tainted
+
+tainted_escalate: [exec, send, autorun, write]
