@@ -7,8 +7,9 @@
 
 ```bash
 pip install -r requirements.txt
-python demo.py          # 시나리오 S1~S5 재현
-python -m pytest        # 자체 테스트 8종
+python demo.py                              # 시나리오 S1~S5 재현
+python -m pytest                            # 자체 테스트 12종
+python -m agenttrace.dashboard agenttrace.db  # 대시보드 → http://127.0.0.1:8787
 ```
 
 - 기획 배경: [`에이전트_탐지_역추적_통합제안서.md`](에이전트_탐지_역추적_통합제안서.md)
@@ -29,6 +30,7 @@ agenttrace/
   collector.py    Sysmon 로그 수집 (wevtutil, ID 1·3·11·13)
   embedding.py    변형 웜 보완 유사도 (임베딩 선택 / stdlib 폴백)
   mcp_server.py   읽기 전용 MCP 서버 (공식 mcp SDK, stdio, 도구 4종)
+  dashboard.py    로컬 웹 대시보드 (stdlib 웹서버, 오프라인)
 demo.py           S1~S5 end-to-end
 tests/            자체 테스트
 ```
