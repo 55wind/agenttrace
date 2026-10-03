@@ -152,7 +152,7 @@ def test_dashboard_incident_detail():
 
     db = mcp_server._ro(path)
     iid = mcp_server.list_incidents(db)["incidents"][0]["id"]
-    d = dashboard._incident_detail(db, iid)
+    d = dashboard.incident_detail(db, iid)
     assert db.execute("SELECT location FROM artifact WHERE id=?",
                       (d["trace"]["origin"],)).fetchone()[0] == "inbox/1"
     assert len(d["nodes"]) == 2 and any(n["from_internet"] for n in d["nodes"])
