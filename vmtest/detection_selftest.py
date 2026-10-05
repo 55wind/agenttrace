@@ -111,8 +111,22 @@ def test_worm_detection_on_real_files():
           f"범위={len(result['scope'])}곳")
 
 
+def test_integrity_detects_tampering():
+    print("\n== 3) 기록 무결성: 저장된 기록을 고치면 변조 위치를 찾는가 ==")
+    s = Store()
+    s.append("read", {"x": 1}, session="s", agent="a")
+    s.append("write", {"x": 2}, session="s", agent="a")
+    s.append("verdict", {"action": "exec", "verdict": "allow"}, session="s", agent="a")
+    ok, _ = s.verify_chain()
+    check("변조 전 무결성 정상", ok)
+    # 2번 레코드의 내용을 몰래 바꿔치기(에이전트가 기록 조작 시도 모사)
+    s.db.execute("UPDATE event SET data='{\"x\": 999}' WHERE id=2")
+    ok, broken = s.verify_chain()
+    check("변조 후 변조 위치 탐지", (not ok) and broken == 2, f"탐지된 위치=id {broken}")
+
+
 def test_sysmon_collection():
-    print("\n== 3) Sysmon 실시간 수집: 실제 OS 이벤트를 가져오는가 ==")
+    print("\n== 4) Sysmon 실시간 수집: 실제 OS 이벤트를 가져오는가 ==")
     store = Store()
     try:
         n = collector.collect(store, count=30)
@@ -133,6 +147,7 @@ def main():
     print("AgentTrace 실제 동작 자가 테스트 (무해한 페이로드만 사용)")
     test_gate_blocks_real_execution()
     test_worm_detection_on_real_files()
+    test_integrity_detects_tampering()
     test_sysmon_collection()
     ok = sum(_results)
     print(f"\n결과: {ok}/{len(_results)} 통과"
