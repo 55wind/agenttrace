@@ -1,7 +1,7 @@
 @echo off
 REM AgentTrace 단일 실행파일(.exe) 빌드 — Windows
-REM 준비: pip install pyinstaller pywebview
-pyinstaller --onefile --name AgentTrace --noconsole ^
+REM 준비: pip install pyinstaller pywebview pystray Pillow
+pyinstaller --onefile --name AgentTrace --noconsole --icon assets\icon.ico ^
   --add-data "agenttrace/policy.yaml;agenttrace" ^
   run_desktop.py
 echo.

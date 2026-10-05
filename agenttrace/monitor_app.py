@@ -37,13 +37,16 @@ def _collect_loop(db_path, stop):
 
 
 def _icon_image():
+    """로고와 동일: 파란 방패 + 흰 노드 그래프(에이전트)."""
     from PIL import Image, ImageDraw
     img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     blue = (37, 99, 235, 255)
-    d.rounded_rectangle([12, 6, 52, 38], radius=8, fill=blue)   # 방패 몸통
-    d.polygon([(12, 36), (32, 58), (52, 36)], fill=blue)        # 방패 아래
-    d.text((27, 15), "A", fill="white")
+    d.polygon([(32, 4), (54, 12), (54, 31), (32, 60), (10, 31), (10, 12)], fill=blue)
+    d.line([(32, 24), (22, 41)], fill="white", width=3)
+    d.line([(32, 24), (42, 41)], fill="white", width=3)
+    for x, y in [(32, 24), (22, 41), (42, 41)]:
+        d.ellipse([x - 5, y - 5, x + 5, y + 5], fill="white")
     return img
 
 
