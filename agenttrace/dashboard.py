@@ -184,6 +184,10 @@ def integrity(db):
                               or f"Sysmon 이벤트 {od.get('event_id')}"),
                 "os_event_id": od.get("event_id"),
             })
+    dismissed = {json.loads(r["data"]).get("session") for r in
+                 db.execute("SELECT data FROM event WHERE kind='action' "
+                            "AND data LIKE '%mismatch_dismissed%'")}
+    mismatches = [m for m in mismatches if m["session"] not in dismissed]
     return {"ok": ok, "broken": broken, "total": total, "mismatches": mismatches}
 
 
@@ -199,6 +203,89 @@ def _verify_chain(db):
             return False, r["id"]
         prev = h
     return True, None
+
+
+# ===== 사용자 조치 (대시보드 버튼이 호출, 로컬·사용자 주도) =====
+import shutil                                   # noqa: E402
+from .store import Store                        # noqa: E402
+
+HOME_DIR = os.path.join(os.path.expanduser("~"), "AgentTrace")
+
+
+def save_report(db_path, iid):
+    """4단 보고서를 텍스트 파일로 저장."""
+    s = Store(db_path)
+    inc = s.db.execute("SELECT * FROM incident WHERE id=?", (iid,)).fetchone()
+    if not inc:
+        s.db.close(); return {"error": "사건을 찾을 수 없음"}
+    text = report.render(report.incident_report(s, inc))
+    outdir = os.path.join(HOME_DIR, "reports"); os.makedirs(outdir, exist_ok=True)
+    path = os.path.join(outdir, f"incident-{iid}-{int(time.time())}.txt")
+    open(path, "w", encoding="utf-8").write(text)
+    s.append("action", {"kind": "report_saved", "incident": iid, "path": path})
+    s.db.close()
+    return {"path": path}
+
+
+def quarantine(db_path, iid):
+    """감염 범위의 실제 파일을 격리 폴더로 이동하고 사건을 격리 상태로 표시."""
+    s = Store(db_path)
+    inc = s.db.execute("SELECT * FROM incident WHERE id=?", (iid,)).fetchone()
+    if not inc:
+        s.db.close(); return {"error": "사건을 찾을 수 없음"}
+    tr = trace.analyze(s, inc["source"])
+    qdir = os.path.join(HOME_DIR, "quarantine"); os.makedirs(qdir, exist_ok=True)
+    moved, marked = [], 0
+    for aid in tr["scope"]:
+        a = s.db.execute("SELECT * FROM artifact WHERE id=?", (aid,)).fetchone()
+        loc = a["location"] if a else None
+        marked += 1
+        if loc and os.path.isfile(loc):
+            dst = os.path.join(qdir, f"{iid}-{os.path.basename(loc)}")
+            try:
+                shutil.move(loc, dst); moved.append(dst)
+            except OSError:
+                pass
+    s.db.execute("UPDATE incident SET status='quarantined' WHERE id=?", (iid,)); s.db.commit()
+    s.append("action", {"kind": "quarantined", "incident": iid,
+                        "moved": moved, "marked": marked})
+    s.db.close()
+    return {"moved": len(moved), "marked": marked, "dir": qdir}
+
+
+def action_decision(db_path, command, decision):
+    """행동 로그의 '한 번 허용/막기'. 막기는 차단 목록에 추가해 이후 관문이 막음."""
+    s = Store(db_path)
+    if decision == "block" and command:
+        os.makedirs(HOME_DIR, exist_ok=True)
+        with open(os.path.join(HOME_DIR, "blocklist.txt"), "a", encoding="utf-8") as f:
+            f.write(command.strip() + "\n")
+    s.append("action", {"kind": "user_decision", "decision": decision,
+                        "command": (command or "")[:200]})
+    s.db.close()
+    return {"ok": True, "decision": decision}
+
+
+def dismiss_mismatch(db_path, session):
+    s = Store(db_path)
+    s.append("action", {"kind": "mismatch_dismissed", "session": session})
+    s.db.close()
+    return {"ok": True}
+
+
+def autoruns():
+    """자동 실행 레지스트리 항목 조회(읽기 전용)."""
+    import subprocess
+    out = []
+    for root in ("HKCU", "HKLM"):
+        key = root + r"\Software\Microsoft\Windows\CurrentVersion\Run"
+        try:
+            r = subprocess.run(["reg", "query", key], capture_output=True,
+                               text=True, timeout=5)
+            out.append({"root": root, "text": (r.stdout or "").strip()})
+        except Exception as e:
+            out.append({"root": root, "text": f"(조회 실패: {e})"})
+    return {"autoruns": out}
 
 
 # --- 로고 (방패 + 노드 그래프), 라이트/다크 공용 ---
@@ -238,6 +325,10 @@ __FONTS__
 }}
 *{box-sizing:border-box}
 .licon{vertical-align:-.18em;flex:none}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:50;
+ background:#111827;color:#fff;padding:12px 18px;border-radius:10px;max-width:80vw;
+ box-shadow:0 6px 24px rgba(0,0,0,.25);font-size:14px;white-space:pre-wrap}
+@media (prefers-color-scheme:dark){.toast{background:#e8eaed;color:#111}}
 body{margin:0;background:var(--bg);color:var(--fg);
  font:15px/1.6 'IBM Plex Sans KR',"Pretendard",system-ui,"Malgun Gothic",sans-serif}
 .app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
@@ -400,6 +491,13 @@ th{color:var(--mut)} code{font-family:'IBM Plex Mono',ui-monospace,monospace;bac
 <script>
 const $=s=>document.querySelector(s);
 const j=async u=>(await fetch(u)).json();
+const post=async(u,b)=>(await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})})).json();
+function toast(msg,ms=2800){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),ms);}
+window.saveReport=async id=>{const r=await post('/api/incident/'+id+'/report');toast(r.path?('보고서를 저장했습니다\n'+r.path):'저장 실패');};
+window.quarantine=async id=>{const r=await post('/api/incident/'+id+'/quarantine');toast('격리 완료. 표시 '+r.marked+'곳, 실제 파일 이동 '+r.moved+'개\n'+(r.dir||''));await refreshSummary();};
+window.decide=async(btn,cmd,dec)=>{await post('/api/action/decision',{command:cmd,decision:dec});const b=btn.closest('.btns');if(b)b.textContent=dec==='block'?'막음으로 처리했습니다. 이후 같은 명령은 관문이 자동으로 막습니다.':'한 번 허용으로 처리했습니다.';toast(dec==='block'?'막음 처리했습니다. 차단 목록에 추가했습니다.':'한 번 허용으로 처리했습니다.');};
+window.showAutoruns=async()=>{const r=await j('/api/autoruns');toast(r.autoruns.map(a=>a.root+'\n'+(a.text||'(없음)')).join('\n\n'),6000);};
+window.dismissMismatch=async s=>{await post('/api/integrity/dismiss',{session:s});toast('문제없음으로 표시했습니다.');go('integrity');};
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const hhmmss=ts=>new Date(ts*1000).toLocaleTimeString('ko-KR',{hour12:false});
 const when=ts=>new Date(ts*1000).toLocaleString('ko-KR',{hour12:false});
@@ -463,7 +561,7 @@ async function dashboard(){
   ['link','기록 무결성 검사','기록이 고쳐졌는지 확인','go("integrity")'],
   ['scroll-text','행동 기록','막거나 확인한 행동 보기','go("actions")'],
   ['download','Windows 기록 수집','Sysmon에서 새 기록 가져오기','alert("Sysmon이 설치돼 있으면 트레이 앱이 주기적으로 수집합니다.")'],
-  ['plus','빠른 작업 추가','자주 쓰는 기능 고정','']];
+  ['plus','빠른 작업 추가','자주 쓰는 기능 고정','toast("이 기능은 다음 단계입니다.")']];
  const tileHtml=tiles.map(([icn,t,d,act],i)=>`<div class="tile ${i===5?'add':''}" ${act?`onclick='${act}'`:''}>
   <div class="ic">${ic(icn,26)}</div><b>${t}</b><span>${d}</span></div>`).join('');
  return `<div class="headrow"><div><h1 class="page">${esc(s.headline)}</h1>
@@ -515,8 +613,8 @@ async function detail(id){
   <div class="headrow"><div><span class="badge high">${ic('shield-alert',14)} 심각도 높음</span>
    <h1 class="page" style="margin-top:8px">자가복제 위협 (웜)</h1>
    <p class="sub">사건 #${d.id}, ${when(d.ts)}, 퍼진 곳 ${d.nodes.length}곳</p></div>
-   <div style="display:flex;gap:10px"><button class="btn ghost">${ic('file-text',16)} 보고서 저장</button>
-    <button class="btn danger">${ic('lock',16)} ${d.nodes.length}곳 모두 격리</button></div></div>
+   <div style="display:flex;gap:10px"><button class="btn ghost" onclick="saveReport(${d.id})">${ic('file-text',16)} 보고서 저장</button>
+    <button class="btn danger" onclick="quarantine(${d.id})">${ic('lock',16)} ${d.nodes.length}곳 모두 격리</button></div></div>
   <div class="card" style="margin-bottom:16px"><h3 style="margin:0 0 8px">무슨 일이 일어났나요?</h3>
    <div style="font-size:16px">${esc(d.headline)}</div></div>
   <div class="card" style="margin-bottom:16px">
@@ -559,7 +657,7 @@ async function actions(){
    <span class="badge v ${r.verdict}">${esc(r.verdict_label)}</span></div>
   <div class="cmd"><code>${esc(r.content)}</code></div>
   <div class="ex">${esc(r.explain)}</div>
-  ${r.verdict==='ask'?`<div class="btns"><button class="btn ghost">한 번 허용</button><button class="btn danger">막기</button></div>`:''}</div>`).join('');
+  ${r.verdict==='ask'?`<div class="btns"><button class="btn ghost" onclick="decide(this,decodeURIComponent('${encodeURIComponent(r.content)}'),'allow')">한 번 허용</button><button class="btn danger" onclick="decide(this,decodeURIComponent('${encodeURIComponent(r.content)}'),'block')">막기</button></div>`:''}</div>`).join('');
  return `<h1 class="page">행동 기록</h1>
   <p class="sub">AI 에이전트가 하려던 행동과 AgentTrace의 판단입니다. 위험한 행동은 실행되기 전에 막습니다.</p>
   <div class="filters" style="margin-top:16px">
@@ -589,8 +687,8 @@ async function integrity(){
    <div class="box"><div class="lab">에이전트의 보고, ${esc(m.agent)}</div>
     <b>“${esc(m.report)}”</b></div></div>
   <p class="mut">에이전트가 실행 전 관문을 거치지 않고 시스템을 바꾼 뒤, 사실과 다르게 보고했을 수 있습니다.</p>
-  <div style="display:flex;gap:12px"><button class="btn primary">자동 실행 항목 확인</button>
-   <button class="linkbtn">문제없음으로 표시</button></div></div>`).join('');
+  <div style="display:flex;gap:12px"><button class="btn primary" onclick="showAutoruns()">자동 실행 항목 확인</button>
+   <button class="linkbtn" onclick="dismissMismatch('${esc(m.session)}')">문제없음으로 표시</button></div></div>`).join('');
  const mmCard=d.mismatches.length?`<div class="card" style="margin-top:16px;border-color:var(--warn)">
   <h3 style="margin:0 0 4px">${ic('triangle-alert',18)} 말과 기록이 다른 곳이 ${d.mismatches.length}건 있습니다</h3>${mm}</div>`:'';
  return `<div class="pagehead"><span class="ic ${okHead[0]}">${ic(okHead[1],24)}</span>
@@ -635,6 +733,8 @@ class _Handler(BaseHTTPRequestHandler):
         p = self.path.split("?")[0]
         if p == "/":
             return self._send(PAGE, "text/html")
+        if p == "/api/autoruns":
+            return self._send(json.dumps(autoruns(), ensure_ascii=False))
         db = mcp_server._ro(self.db_path)
         try:
             if p == "/api/summary":
@@ -655,6 +755,28 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._send(json.dumps(d, ensure_ascii=False))
         finally:
             db.close()
+        self.send_error(404)
+
+    def do_POST(self):
+        p = self.path.split("?")[0]
+        n = int(self.headers.get("Content-Length") or 0)
+        try:
+            data = json.loads(self.rfile.read(n).decode("utf-8")) if n else {}
+        except Exception:
+            data = {}
+        try:
+            parts = p.split("/")
+            if p.startswith("/api/incident/") and p.endswith("/report"):
+                return self._send(json.dumps(save_report(self.db_path, int(parts[3])), ensure_ascii=False))
+            if p.startswith("/api/incident/") and p.endswith("/quarantine"):
+                return self._send(json.dumps(quarantine(self.db_path, int(parts[3])), ensure_ascii=False))
+            if p == "/api/action/decision":
+                return self._send(json.dumps(action_decision(
+                    self.db_path, data.get("command", ""), data.get("decision", "")), ensure_ascii=False))
+            if p == "/api/integrity/dismiss":
+                return self._send(json.dumps(dismiss_mismatch(self.db_path, data.get("session", "")), ensure_ascii=False))
+        except Exception as e:
+            return self._send(json.dumps({"error": str(e)}, ensure_ascii=False))
         self.send_error(404)
 
     def log_message(self, *a):
