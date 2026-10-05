@@ -14,18 +14,19 @@ def incident_report(store, incident_row):
     o = store.artifact(origin) if origin else None
 
     facts = [
-        f"복제 규칙 '{incident_row['rule']}' 발동 (근거 이벤트 {incident_row['evidence']}).",
-        f"최초 감염원: {o['location'] if o else origin} "
-        f"(인터넷 유입: {'예' if o and o['from_internet'] else '불명'}).",
-        f"감염 범위: {len(scope)}개 artifact — {', '.join(_loc(store, a) for a in scope)}.",
+        f"복제 규칙이 발동했습니다 (근거 기록 {incident_row['evidence']}).",
+        f"최초 감염원은 ‘{o['location'] if o else origin}’이며, "
+        f"인터넷에서 {'들어왔습니다' if o and o['from_internet'] else '들어왔는지 불명확합니다'}.",
+        f"감염 범위는 {len(scope)}곳입니다. {', '.join(_loc(store, a) for a in scope)}.",
     ]
-    interp = ["유입 콘텐츠의 지시문이 에이전트 출력으로 재등장 후 고위험 행동이 이어짐 → 자가복제 전파로 해석됨."]
+    interp = ["유입된 내용의 지시문이 에이전트 출력에 다시 나타난 뒤 고위험 행동으로 "
+              "이어졌습니다. 스스로 복제되어 퍼진 것으로 보입니다."]
     limits = [
-        "지시문을 바꿔 쓴 변형 웜은 유사도 기준 미달로 누락될 수 있음(임베딩 보완 필요).",
-        "에이전트 자기 보고가 아닌 OS·훅 기록 기반이나, 훅 미적용 경로는 사후 탐지만 가능.",
+        "지시문을 바꿔 쓴 변형 웜은 닮음 기준에 못 미쳐 놓칠 수 있습니다. 임베딩으로 보완합니다.",
+        "에이전트 자기 보고가 아니라 OS와 훅 기록에 근거하지만, 훅이 없는 경로는 사후에만 탐지합니다.",
     ]
-    actions = [f"정리 대상: {_loc(store, a)}" for a in scope] + \
-              ["원본은 화면에서 직접 열람하고, 외부 전송 전 검역할 것."]
+    actions = [f"‘{_loc(store, a)}’ 을(를) 격리하거나 삭제하세요." for a in scope] + \
+              ["원본은 화면에서 직접 열어 보고, 외부로 보내기 전에 검역하세요."]
     return {"관찰 사실": facts, "가능한 해석": interp, "판단 한계": limits, "사용자 조치": actions}
 
 

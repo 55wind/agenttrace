@@ -1,4 +1,4 @@
-"""로컬 웹 대시보드 (제안서 ⑧) — 비전공자용 데스크톱 앱 화면.
+"""로컬 웹 대시보드 (제안서 ⑧), 비전공자용 데스크톱 앱 화면.
 
 외부 의존 0: stdlib http.server + 바닐라 JS. 그래프 라이브러리/CDN 없음 →
 외부망 차단 환경(§A)에서도 동작, 127.0.0.1에만 바인딩. 조회는 읽기 전용.
@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from . import mcp_server, report, trace
 
 KIND_LABEL = {"file": "파일", "mail": "메일", "message": "메시지", "memory": "메모리"}
-KIND_ICON = {"file": "📄", "mail": "📧", "message": "💬", "memory": "🧠"}
+KIND_ICON = {"file": "file-text", "mail": "mail", "message": "message-square", "memory": "database"}
 ACTION_LABEL = {"exec": "명령 실행", "send": "외부로 보내기",
                 "write": "파일 쓰기", "autorun": "자동 실행 등록"}
 VERDICT_LABEL = {"allow": "허용", "ask": "확인 필요", "block": "막음"}
@@ -26,7 +26,7 @@ RULE_EXPLAIN = {
     "encoded-powershell": "내용을 숨긴(인코딩한) PowerShell 명령이라 막았습니다.",
     "remote-code-exec": "원격 코드를 내려받아 바로 실행하려 해서 막았습니다.",
     "eicar-test-string": "테스트용 악성 문자열(EICAR)이라 막았습니다.",
-    "credential-access": "비밀번호·키 파일에 접근하려 해서 확인을 요청했습니다.",
+    "credential-access": "비밀번호와 키 파일에 접근하려 해서 확인을 요청했습니다.",
     "autorun-registration": "컴퓨터 시작 시 자동 실행을 등록하려 해서 확인을 요청했습니다.",
 }
 
@@ -109,7 +109,7 @@ def incident_detail(db, iid):
         nodes.append({
             "id": aid, "name": (a["location"] if a and a["location"] else aid[:10]),
             "kind": kind, "kind_label": KIND_LABEL.get(kind, "항목"),
-            "icon": KIND_ICON.get(kind, "📦"),
+            "icon": KIND_ICON.get(kind, "file-text"),
             "from_internet": bool(a and a["from_internet"]),
             "infected": bool(a and a["infected"]), "is_origin": is_origin,
             "note": (f"{by}가 {KIND_LABEL.get(kind,'항목')}에 {verb}" if by else None),
@@ -211,6 +211,10 @@ LOGO_SVG = ('<svg viewBox="0 0 64 64" class="logo" aria-hidden="true">'
             'stroke-linecap="round"/></svg>')
 
 
+# Lucide 아이콘(ISC 라이선스) inner SVG를 인라인, 오프라인/단일파일 유지
+ICONS = {"arrow-right": "<path d=\"M5 12h14\" /> <path d=\"m12 5 7 7-7 7\" />", "bell": "<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /> <path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />", "circle-check": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m16 9-5.5 5.5L8 12\" />", "circle-help": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" /> <path d=\"M12 17h.01\" />", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 6v6l4 2\" />", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\" /> <path d=\"M3 5V19A9 3 0 0 0 21 19V5\" /> <path d=\"M3 12A9 3 0 0 0 21 12\" />", "download": "<path d=\"M12 15V3\" /> <path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /> <path d=\"m7 10 5 5 5-5\" />", "file-check": "<path d=\"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z\" /> <path d=\"M14 2v5a1 1 0 0 0 1 1h5\" /> <path d=\"m9 15 2 2 4-4\" />", "file-text": "<path d=\"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z\" /> <path d=\"M14 2v5a1 1 0 0 0 1 1h5\" /> <path d=\"M10 9H8\" /> <path d=\"M16 13H8\" /> <path d=\"M16 17H8\" />", "git-branch": "<path d=\"M15 6a9 9 0 0 0-9 9V3\" /> <circle cx=\"18\" cy=\"6\" r=\"3\" /> <circle cx=\"6\" cy=\"18\" r=\"3\" />", "layout-dashboard": "<rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\" /> <rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\" />", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\" /> <path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\" />", "lock-keyhole": "<circle cx=\"12\" cy=\"16\" r=\"1\" /> <rect x=\"3\" y=\"10\" width=\"18\" height=\"12\" rx=\"2\" /> <path d=\"M7 10V7a5 5 0 0 1 10 0v3\" />", "lock": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", "mail": "<path d=\"m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7\" /> <rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\" />", "message-square": "<path d=\"M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z\" />", "plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />", "scroll-text": "<path d=\"M15 12h-5\" /> <path d=\"M15 8h-5\" /> <path d=\"M19 17V5a2 2 0 0 0-2-2H4\" /> <path d=\"M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3\" />", "search": "<path d=\"m21 21-4.34-4.34\" /> <circle cx=\"11\" cy=\"11\" r=\"8\" />", "settings": "<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "shield-alert": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"M12 8v4\" /> <path d=\"M12 16h.01\" />", "shield-check": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"m9 12 2 2 4-4\" />", "shield": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" />", "triangle-alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />", "wifi-off": "<path d=\"M12 20h.01\" /> <path d=\"M8.5 16.429a5 5 0 0 1 7 0\" /> <path d=\"M5 12.859a10 10 0 0 1 5.17-2.69\" /> <path d=\"M19 12.859a10 10 0 0 0-2.007-1.523\" /> <path d=\"M2 8.82a15 15 0 0 1 4.177-2.643\" /> <path d=\"M22 8.82a15 15 0 0 0-11.288-3.764\" /> <path d=\"m2 2 20 20\" />"}
+
+
 PAGE = r"""<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AgentTrace</title>
@@ -231,6 +235,7 @@ PAGE = r"""<!doctype html><html lang="ko"><head><meta charset="utf-8">
  --shadow:0 1px 3px rgba(0,0,0,.35);
 }}
 *{box-sizing:border-box}
+.licon{vertical-align:-.18em;flex:none}
 body{margin:0;background:var(--bg);color:var(--fg);
  font:15px/1.6 "Pretendard",system-ui,"Segoe UI","Malgun Gothic",sans-serif}
 .app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
@@ -379,13 +384,13 @@ th{color:var(--mut)} code{font-family:ui-monospace,monospace;background:var(--su
 <div class="app">
  <aside>
   <div class="brand">__LOGO__<b>Agent<span>Trace</span><small>개인용 에이전트 보안</small></b></div>
-  <div class="statusshield" id="shield"><div class="big">🛡️</div></div>
+  <div class="statusshield" id="shield"><div class="big"></div></div>
   <nav id="nav"></nav>
  </aside>
  <main>
   <div class="topbar">
-   <span class="offline"><span class="dot"></span>오프라인 · 이 PC 안에서만 동작</span>
-   <span class="help">?</span>
+   <span class="offline"><span class="dot"></span>오프라인, 이 PC 안에서만 동작</span>
+   <span class="help"><svg class="licon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>
   </div>
   <div class="content" id="view"></div>
  </main>
@@ -397,19 +402,22 @@ const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','
 const hhmmss=ts=>new Date(ts*1000).toLocaleTimeString('ko-KR',{hour12:false});
 const when=ts=>new Date(ts*1000).toLocaleString('ko-KR',{hour12:false});
 let SUM={};
+const ICONS=__ICONS__;
+const ic=(n,s=20)=>`<svg class="licon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
+const kindIcon=k=>({file:'file-text',mail:'mail',message:'message-square',memory:'database'}[k]||'file-text');
 
-const NAV=[['dashboard','🔲','대시보드'],['threats','⚠️','위협'],
- ['actions','≣','행동 기록'],['integrity','🔗','기록 무결성'],['settings','⚙️','설정']];
+const NAV=[['dashboard','layout-dashboard','대시보드'],['threats','shield-alert','위협'],
+ ['actions','scroll-text','행동 기록'],['integrity','link','기록 무결성'],['settings','settings','설정']];
 let route='dashboard', curIncident=null;
 
 function renderNav(){
- $('#nav').innerHTML=NAV.map(([k,ic,l])=>{
+ $('#nav').innerHTML=NAV.map(([k,icn,l])=>{
   const b=(k==='threats'&&SUM.threats)?`<span class="badge">${SUM.threats}</span>`:'';
-  return `<div class="navitem ${k===route?'on':''}" data-k="${k}"><span class="i">${ic}</span>${l}${b}</div>`;
+  return `<div class="navitem ${k===route?'on':''}" data-k="${k}"><span class="i">${ic(icn,20)}</span>${l}${b}</div>`;
  }).join('');
  $('#nav').querySelectorAll('.navitem').forEach(n=>n.onclick=()=>go(n.dataset.k));
  const sh=$('#shield'); sh.className='statusshield '+(SUM.state||'safe');
- sh.querySelector('.big').textContent=SUM.state==='safe'?'🛡️':'❗';
+ sh.querySelector('.big').innerHTML=ic(SUM.state==='safe'?'shield-check':'shield-alert',40);
 }
 async function refreshSummary(){ SUM=await j('/api/summary'); renderNav(); }
 function go(k){ route=k; curIncident=null; renderNav(); render(); }
@@ -434,32 +442,32 @@ async function dashboard(){
  let feature;
  if(s.state==='safe'){
   feature=`<div class="card"><div class="feature"><div>
-   <div class="t"><span class="ic" style="background:var(--safe-bg);color:var(--safe)">🔒</span>Claude에게 직접 물어보세요</div>
+   <div class="t"><span class="ic" style="background:var(--safe-bg);color:var(--safe)">${ic('lock-keyhole',18)}</span>Claude에게 직접 물어보세요</div>
    <div class="m">읽기 전용 MCP 서버를 연결하면 Claude에서 ‘이번 주에 위협 있었어?’처럼 물어볼 수 있습니다. 기록은 바뀌지 않습니다.</div>
-   <div class="meta">추천 · 설정 2분</div></div>
+   <div class="meta">추천, 설정 2분</div></div>
    <div class="right"><button class="btn primary" onclick="go('settings')">방법 보기</button>
    <button class="linkbtn">나중에</button></div></div></div>`;
  }else{
   const inc=(await j('/api/incidents')).incidents[0];
   feature=`<div class="card"><div class="feature"><div>
-   <div class="t"><span class="ic">🛡</span>${esc(inc.title)} — ${esc(inc.origin)}에서 시작</div>
+   <div class="t"><span class="ic">${ic('shield-alert',18)}</span>${esc(inc.title)}, ${esc(inc.origin)}에서 시작</div>
    <div class="m">${esc(inc.summary)}</div>
-   <div class="meta">사건 #${inc.id} · ${when(inc.ts)} · 심각도 ${esc(inc.severity)}</div></div>
+   <div class="meta">사건 #${inc.id}, ${when(inc.ts)}, 심각도 ${esc(inc.severity)}</div></div>
    <div class="right"><button class="btn primary" onclick="openIncident(${inc.id})">자세히 보기</button>
    <button class="linkbtn">나중에</button></div></div></div>`;
  }
- const tiles=[['🔎','빠른 점검','기록을 처음부터 다시 분석','go("threats")'],
-  ['🕸','역추적','최초 감염원과 퍼진 범위','go("threats")'],
-  ['🔗','기록 무결성 검사','기록이 고쳐졌는지 확인','go("integrity")'],
-  ['≣','행동 기록','막거나 확인한 행동 보기','go("actions")'],
-  ['⬇','Windows 기록 수집','Sysmon에서 새 기록 가져오기','alert("Sysmon이 설치돼 있으면 트레이 앱이 주기적으로 수집합니다.")'],
-  ['＋','빠른 작업 추가','자주 쓰는 기능 고정','']];
- const tileHtml=tiles.map(([ic,t,d,act],i)=>`<div class="tile ${i===5?'add':''}" ${act?`onclick='${act}'`:''}>
-  <div class="ic">${ic}</div><b>${t}</b><span>${d}</span></div>`).join('');
+ const tiles=[['search','빠른 점검','기록을 처음부터 다시 분석','go("threats")'],
+  ['git-branch','역추적','최초 감염원과 퍼진 범위','go("threats")'],
+  ['link','기록 무결성 검사','기록이 고쳐졌는지 확인','go("integrity")'],
+  ['scroll-text','행동 기록','막거나 확인한 행동 보기','go("actions")'],
+  ['download','Windows 기록 수집','Sysmon에서 새 기록 가져오기','alert("Sysmon이 설치돼 있으면 트레이 앱이 주기적으로 수집합니다.")'],
+  ['plus','빠른 작업 추가','자주 쓰는 기능 고정','']];
+ const tileHtml=tiles.map(([icn,t,d,act],i)=>`<div class="tile ${i===5?'add':''}" ${act?`onclick='${act}'`:''}>
+  <div class="ic">${ic(icn,26)}</div><b>${t}</b><span>${d}</span></div>`).join('');
  return `<div class="headrow"><div><h1 class="page">${esc(s.headline)}</h1>
    <p class="sub">${esc(s.subtitle)}</p></div>${kpi}</div>
   ${feature}<div class="tiles">${tileHtml}</div>
-  <div class="foot">🗄 저장된 기록 ${s.records}건이 변조 없이 보관되어 있습니다.
+  <div class="foot">${ic('file-check',16)} 저장된 기록 ${s.records}건이 변조 없이 보관되어 있습니다.
    <button class="linkbtn" onclick="go('integrity')">기록 무결성 보기</button></div>`;
 }
 window.openIncident=async id=>{ route='threats'; curIncident=id; renderNav(); detail(id); };
@@ -467,14 +475,14 @@ window.openIncident=async id=>{ route='threats'; curIncident=id; renderNav(); de
 /* ---- 위협 목록 ---- */
 async function threats(){
  const d=await j('/api/incidents');
- if(!d.incidents.length) return `<h1 class="page">위협</h1><div class="card mut">발견된 위협이 없습니다. 안전합니다. ✅</div>`;
+ if(!d.incidents.length) return `<h1 class="page">위협</h1><div class="card mut">발견된 위협이 없습니다. 안전합니다. ${ic('circle-check',16)}</div>`;
  const cards=d.incidents.map(i=>`<div class="card" style="margin-bottom:12px;cursor:pointer" onclick="openIncident(${i.id})">
   <div class="feature" style="margin:0"><div>
-   <div class="t"><span class="ic">🛡</span>${esc(i.title)}</div>
-   <div class="m">${esc(i.origin)}에서 시작 · ${esc(i.summary)}</div>
-   <div class="meta">사건 #${i.id} · ${when(i.ts)}</div></div>
+   <div class="t"><span class="ic">${ic('shield-alert',18)}</span>${esc(i.title)}</div>
+   <div class="m">${esc(i.origin)}에서 시작, ${esc(i.summary)}</div>
+   <div class="meta">사건 #${i.id}, ${when(i.ts)}</div></div>
    <span class="badge high">심각도 ${esc(i.severity)}</span></div></div>`).join('');
- return `<h1 class="page">위협</h1><p class="sub">발견된 자가복제·전파 위협입니다.</p><div style="margin-top:18px">${cards}</div>`;
+ return `<h1 class="page">위협</h1><p class="sub">발견된 자가복제 전파 위협입니다.</p><div style="margin-top:18px">${cards}</div>`;
 }
 
 /* ---- 위협 상세 ---- */
@@ -484,13 +492,13 @@ async function detail(id){
  let flow='<div class="flow">';
  d.nodes.forEach((n,i)=>{
   if(i>0){ const s=emap[d.nodes[i-1].id+'>'+n.id];
-   flow+=`<div class="arrow"><div class="a">→</div>${s?`<div class="s">닮음 ${Math.round(s*100)}%</div>`:''}
+   flow+=`<div class="arrow"><div class="a">${ic('arrow-right',24)}</div>${s?`<div class="s">닮음 ${Math.round(s*100)}%</div>`:''}
     ${n.note?`<div class="n">${esc(n.note)}</div>`:''}</div>`; }
-  let chips=''; if(n.is_origin)chips+='<span class="chip start">⚑ 시작점</span>';
-  if(n.from_internet)chips+='<span class="chip net">🌐 인터넷에서 들어옴</span>';
+  let chips=''; if(n.is_origin)chips+='<span class="chip start">시작점</span>';
+  if(n.from_internet)chips+='<span class="chip net">인터넷에서 들어옴</span>';
   if(n.infected)chips+='<span class="chip inf">감염</span>';
   flow+=`<div class="fnode ${n.is_origin?'origin':''} ${n.infected?'infected':''}">
-   <div class="k">${n.icon} ${esc(n.kind_label)}</div><div class="nm">${esc(n.name)}</div>${chips}</div>`;
+   <div class="k">${ic(n.icon,16)} ${esc(n.kind_label)}</div><div class="nm">${esc(n.name)}</div>${chips}</div>`;
  });
  flow+='</div>';
  const steps=d.steps.map((s,i)=>`<li><input type="checkbox" id="st${i}"
@@ -501,12 +509,12 @@ async function detail(id){
  const panes=keys.map((k,i)=>`<ul class="rp" data-i="${i}" style="${i?'display:none':''}">${R[k].map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`).join('');
  const tl=d.timeline.map(e=>`<tr><td>${e.id}</td><td>${hhmmss(e.ts)}</td><td>${esc(e.kind)}</td>
   <td>${esc(e.session||'')} / ${esc(e.agent||'')}</td><td>${esc(e.data)}</td></tr>`).join('');
- $('#view').innerHTML=`<button class="back" onclick="go('threats')">← 위협 목록</button>
-  <div class="headrow"><div><span class="badge high">🛡 심각도 높음</span>
+ $('#view').innerHTML=`<button class="back" onclick="go('threats')"><svg class="licon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg> 위협 목록</button>
+  <div class="headrow"><div><span class="badge high">${ic('shield-alert',14)} 심각도 높음</span>
    <h1 class="page" style="margin-top:8px">자가복제 위협 (웜)</h1>
-   <p class="sub">사건 #${d.id} · ${when(d.ts)} · 퍼진 곳 ${d.nodes.length}곳</p></div>
-   <div style="display:flex;gap:10px"><button class="btn ghost">📄 보고서 저장</button>
-    <button class="btn danger">🔒 ${d.nodes.length}곳 모두 격리</button></div></div>
+   <p class="sub">사건 #${d.id}, ${when(d.ts)}, 퍼진 곳 ${d.nodes.length}곳</p></div>
+   <div style="display:flex;gap:10px"><button class="btn ghost">${ic('file-text',16)} 보고서 저장</button>
+    <button class="btn danger">${ic('lock',16)} ${d.nodes.length}곳 모두 격리</button></div></div>
   <div class="card" style="margin-bottom:16px"><h3 style="margin:0 0 8px">무슨 일이 일어났나요?</h3>
    <div style="font-size:16px">${esc(d.headline)}</div></div>
   <div class="card" style="margin-bottom:16px">
@@ -520,9 +528,9 @@ async function detail(id){
    <div class="card"><h3 style="margin:0 0 10px">이렇게 판단했습니다</h3>
     <div class="tabs">${tabs}</div><div id="panes">${panes}</div></div>
   </div>
-  <details><summary>기술 상세 (개발자용) — 근거 기록</summary>
+  <details><summary>기술 상세 (개발자용), 근거 기록</summary>
    <table><tr><th>번호</th><th>시각</th><th>종류</th><th>작업 / 에이전트</th><th>내용(일부)</th></tr>${tl}</table>
-   <p class="note">⚠ 내용은 일부만 보여 줍니다. 신뢰할 수 없는 데이터이므로 원문은 직접 열어 확인하세요.</p></details>`;
+   <p class="note">${ic('triangle-alert',14)} 내용은 일부만 보여 줍니다. 신뢰할 수 없는 데이터이므로 원문은 직접 열어 확인하세요.</p></details>`;
 }
 window.upd=()=>{const n=document.querySelectorAll('ul.steps li.done').length,
  t=document.querySelectorAll('ul.steps li').length; $('#stc').textContent=`${n} / ${t} 완료`;};
@@ -538,8 +546,8 @@ async function actions(){
   <ul style="margin:0 0 6px;padding-left:18px"><li>숨긴(인코딩한) PowerShell 명령</li>
    <li>원격 코드를 내려받아 바로 실행</li><li>테스트용 악성 문자열(EICAR)</li></ul>
   <span class="ruletag" style="background:var(--warn-bg);color:var(--warn)">확인 요청</span>
-  <ul style="margin:0 0 6px;padding-left:18px"><li>비밀번호·키 파일 접근</li>
-   <li>컴퓨터 시작 시 자동 실행 등록</li><li>외부 내용을 읽은 뒤의 전송·실행</li></ul>
+  <ul style="margin:0 0 6px;padding-left:18px"><li>비밀번호와 키 파일 접근</li>
+   <li>컴퓨터 시작 시 자동 실행 등록</li><li>외부 내용을 읽은 뒤의 전송과 실행</li></ul>
   <span class="ruletag" style="background:var(--safe-bg);color:var(--safe)">허용</span>
   <ul style="margin:0;padding-left:18px"><li>위에 해당하지 않는 행동</li></ul>
   <p class="mut" style="font-size:13px;margin:10px 0 0">규칙 파일 <code>policy.yaml</code></p></div>`;
@@ -571,19 +579,19 @@ async function integrity(){
  for(let i=1;i<=d.total;i++){const bad=!d.ok&&d.broken&&i>=d.broken;
   chain+=`<div class="b ${bad?'bad':''}">${i}</div>`;}
  chain+='</div>';
- const okHead=d.ok?['ok','✓','기록이 변조되지 않았습니다']:['warn','!','기록이 변조되었습니다'];
+ const okHead=d.ok?['ok','circle-check','기록이 변조되지 않았습니다']:['warn','triangle-alert','기록이 변조되었습니다'];
  const mm=d.mismatches.map(m=>`<div style="margin:8px 0">
-  <div class="mm"><div class="box"><div class="lab">Windows 시스템 기록 · Sysmon 이벤트 ${esc(m.os_event_id)}</div>
+  <div class="mm"><div class="box"><div class="lab">Windows 시스템 기록, Sysmon 이벤트 ${esc(m.os_event_id)}</div>
     <b>${esc(m.os_title)}</b><div><code>${esc(m.os_detail)}</code></div></div>
    <div class="neq">≠</div>
-   <div class="box"><div class="lab">에이전트의 보고 · ${esc(m.agent)}</div>
+   <div class="box"><div class="lab">에이전트의 보고, ${esc(m.agent)}</div>
     <b>“${esc(m.report)}”</b></div></div>
   <p class="mut">에이전트가 실행 전 관문을 거치지 않고 시스템을 바꾼 뒤, 사실과 다르게 보고했을 수 있습니다.</p>
   <div style="display:flex;gap:12px"><button class="btn primary">자동 실행 항목 확인</button>
    <button class="linkbtn">문제없음으로 표시</button></div></div>`).join('');
  const mmCard=d.mismatches.length?`<div class="card" style="margin-top:16px;border-color:var(--warn)">
-  <h3 style="margin:0 0 4px">⚠ 말과 기록이 다른 곳이 ${d.mismatches.length}건 있습니다</h3>${mm}</div>`:'';
- return `<div class="pagehead"><span class="ic ${okHead[0]}">${okHead[1]}</span>
+  <h3 style="margin:0 0 4px">${ic('triangle-alert',18)} 말과 기록이 다른 곳이 ${d.mismatches.length}건 있습니다</h3>${mm}</div>`:'';
+ return `<div class="pagehead"><span class="ic ${okHead[0]}">${ic(okHead[1],24)}</span>
    <div><h1 class="page" style="margin:0">${okHead[2]}</h1>
    <p class="sub">저장된 기록 ${d.total}건을 모두 검사했습니다.</p></div></div>
   <div class="card" style="margin-top:14px">
@@ -599,7 +607,7 @@ function settings(){
  return `<h1 class="page">설정</h1><p class="sub">이 PC 안에서만 동작하는 개인용 보안 도구입니다.</p>
   <div class="card" style="margin-top:18px"><h3 style="margin:0 0 10px">실행</h3>
    <p>상시 감시는 트레이 앱으로 켭니다: <code>pythonw -m agenttrace.monitor_app</code> 또는 <code>start_monitor.bat</code>.</p>
-   <p class="mut">트레이 아이콘 우클릭 → <b>Windows 시작 시 자동 실행</b> 토글(관리자 권한 불필요).</p></div>
+   <p class="mut">트레이 아이콘 우클릭하면 <b>Windows 시작 시 자동 실행</b> 토글(관리자 권한 불필요).</p></div>
   <div class="card" style="margin-top:14px"><h3 style="margin:0 0 10px">Claude 연결 (읽기 전용 MCP)</h3>
    <p><code>pip install mcp</code> 후 <code>python -m agenttrace.mcp_server &lt;db&gt;</code> 를 Claude Desktop/Code에 stdio로 연결하면 ‘이번 주 위협 있었어?’처럼 물어볼 수 있습니다. 기록은 바뀌지 않습니다.</p></div>
   <div class="card" style="margin-top:14px"><h3 style="margin:0 0 10px">데이터</h3>
@@ -652,6 +660,8 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 PAGE = PAGE.replace("__LOGO__", LOGO_SVG)
+import json as _json
+PAGE = PAGE.replace("__ICONS__", _json.dumps(ICONS, ensure_ascii=False))
 
 
 def serve(db_path, port=8787):
