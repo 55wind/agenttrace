@@ -1,11 +1,12 @@
 """AgentTrace 데스크톱 앱 런처.
 
-기존 로컬 대시보드를 그대로 재사용한다. 서버는 백그라운드 스레드로 띄우고,
-pywebview가 있으면 네이티브 앱 창으로, 없으면 기본 브라우저로 연다.
-PyInstaller로 단일 .exe 패키징하면 비전공자는 더블클릭만 하면 된다
-(Python 설치 불필요).
+대시보드를 **네이티브 창(GUI)**으로 띄우는 데스크톱 앱. 서버는 백그라운드 스레드,
+창은 pywebview(없으면 기본 브라우저로 폴백). 창이 떠 있는 동안 Sysmon 수집도
+백그라운드로 돈다(설치돼 있으면). 창을 닫으면 앱이 종료된다.
+PyInstaller로 단일 .exe 패키징하면 더블클릭만으로 창이 뜬다(Python 불필요).
 
 실행: python -m agenttrace.app   (또는 패키징한 AgentTrace.exe 더블클릭)
+상시 백그라운드(트레이)로 돌리려면: python -m agenttrace.monitor_app
 """
 import os
 import time
@@ -14,6 +15,9 @@ import threading
 
 from .dashboard import serve
 from .store import Store
+from . import collector
+
+COLLECT_EVERY = 10          # 초. Sysmon 폴링 주기
 
 # 개인 사용자 기본 저장 위치: 홈\AgentTrace\agenttrace.db
 DEFAULT_DB = os.path.join(os.path.expanduser("~"), "AgentTrace", "agenttrace.db")
@@ -45,18 +49,36 @@ def _wait_ready(port, timeout=5.0):
     return False
 
 
+def _collect_loop(db_path, stop):
+    """Sysmon 이벤트를 주기적으로 수집. 미설치면 조용히 종료(앱은 계속)."""
+    store = Store(db_path)
+    try:
+        while not stop.is_set():
+            try:
+                collector.collect(store)
+            except RuntimeError:
+                return      # Sysmon 없음 → OS 수집 비활성, 나머지는 동작
+            stop.wait(COLLECT_EVERY)
+    finally:
+        store.db.close()
+
+
 def main():
     db = os.environ.get("AGENTTRACE_DB", DEFAULT_DB)
     _ensure_db(db)
     port = int(os.environ.get("AGENTTRACE_PORT") or _free_port())
     threading.Thread(target=serve, args=(db, port), daemon=True).start()
+    stop = threading.Event()
+    threading.Thread(target=_collect_loop, args=(db, stop), daemon=True).start()
     _wait_ready(port)
     url = f"http://127.0.0.1:{port}"
 
     try:
-        import webview       # 있으면 네이티브 앱 창
-        webview.create_window("AgentTrace 보안 관리자", url, width=1200, height=900)
-        webview.start()
+        import webview       # 네이티브 앱 창(GUI)
+        webview.create_window("AgentTrace 보안 관리자", url, width=1280, height=860,
+                              min_size=(960, 640))
+        webview.start()      # 창을 닫을 때까지 블록
+        stop.set()
         return
     except Exception:
         # pywebview 미설치 또는 WebView 백엔드 없음 → 기본 브라우저로 폴백
@@ -68,7 +90,7 @@ def main():
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        pass
+        stop.set()
 
 
 if __name__ == "__main__":

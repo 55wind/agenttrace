@@ -15,25 +15,8 @@ import threading
 import webbrowser
 
 from .dashboard import serve
-from .app import _free_port, _ensure_db, _wait_ready, DEFAULT_DB
-from .store import Store
-from . import collector, autostart
-
-COLLECT_EVERY = 10          # 초. Sysmon 폴링 주기
-
-
-def _collect_loop(db_path, stop):
-    """Sysmon 이벤트를 주기적으로 수집. 미설치면 조용히 종료(앱은 계속)."""
-    store = Store(db_path)
-    try:
-        while not stop.is_set():
-            try:
-                collector.collect(store)
-            except RuntimeError:
-                return      # Sysmon 없음 → OS 수집 비활성, 나머지는 동작
-            stop.wait(COLLECT_EVERY)
-    finally:
-        store.db.close()
+from .app import _free_port, _ensure_db, _wait_ready, _collect_loop, DEFAULT_DB
+from . import autostart
 
 
 def _icon_image():
