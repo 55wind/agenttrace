@@ -18,7 +18,8 @@ $config = @'
 </Sysmon>
 '@
 $cfgPath = Join-Path $work "sysmonconfig.xml"
-Set-Content -Path $cfgPath -Value $config -Encoding UTF8
+# BOM 없는 UTF-8로 써야 Sysmon 매니페스트 설치가 실패하지 않는다.
+[System.IO.File]::WriteAllText($cfgPath, $config)
 
 Write-Host "Sysmon 내려받는 중..."
 $zip = Join-Path $work "Sysmon.zip"
