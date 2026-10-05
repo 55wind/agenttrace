@@ -22,6 +22,7 @@ python -m agenttrace.dashboard agenttrace.db  # 대시보드 http://127.0.0.1:87
 - 기획 배경: [`에이전트_탐지_역추적_통합제안서.md`](에이전트_탐지_역추적_통합제안서.md)
 - 사용 방법: [`docs/사용방법.md`](docs/사용방법.md)
 - 기능 명세: [`docs/기능명세서.md`](docs/기능명세서.md)
+- 실측 성능: [`docs/실측치.md`](docs/실측치.md) (관문 판정 지연 평균 약 0.08 ms, 실측)
 - 실제 동작 테스트(VM): [`vmtest/README.md`](vmtest/README.md)
 
 ## 실제 동작 확인
