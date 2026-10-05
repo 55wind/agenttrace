@@ -22,6 +22,17 @@ python -m agenttrace.dashboard agenttrace.db  # 대시보드 http://127.0.0.1:87
 - 기획 배경: [`에이전트_탐지_역추적_통합제안서.md`](에이전트_탐지_역추적_통합제안서.md)
 - 사용 방법: [`docs/사용방법.md`](docs/사용방법.md)
 - 기능 명세: [`docs/기능명세서.md`](docs/기능명세서.md)
+- 실제 동작 테스트(VM): [`vmtest/README.md`](vmtest/README.md)
+
+## 실제 동작 확인
+
+```bash
+python vmtest/detection_selftest.py   # 관문 차단, 웜 탐지, 역추적을 실제로 검증
+```
+
+위험 명령이 실제 실행 전에 막히는지(표식 파일 미생성), 실제 파일 흐름에서 웜 복제를
+탐지하고 감염원까지 역추적하는지 확인합니다. Sysmon 실시간 수집과 실제 에이전트
+(Claude Code) 훅 연동은 VM에서 [`vmtest/README.md`](vmtest/README.md)를 따라 확인하세요.
 
 ## 구조
 
