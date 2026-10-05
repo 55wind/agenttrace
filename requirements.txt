@@ -11,5 +11,9 @@ PyYAML>=6.0
 # pywebview>=5.0
 # pyinstaller>=6.0
 
+# 선택: 상시 감시 트레이 아이콘
+# pystray>=0.19
+# Pillow>=10.0
+
 # dev
 pytest>=7.0

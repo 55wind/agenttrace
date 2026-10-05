@@ -32,6 +32,8 @@ agenttrace/
   engine.py       오염 추적·복제 탐지 (Monitor)
   trace.py        전파 그래프·역추적 (stdlib BFS)
   app.py          데스크톱 앱 런처 (pywebview 창 / 브라우저 폴백)
+  monitor_app.py  상시 감시 트레이 앱 (+ Sysmon 루프 + 자동 실행)
+  autostart.py    Windows 시작 시 자동 실행 등록 (winreg)
   report.py       근거 기반 4단 보고
   collector.py    Sysmon 로그 수집 (wevtutil, ID 1·3·11·13)
   embedding.py    변형 웜 보완 유사도 (임베딩 선택 / stdlib 폴백)

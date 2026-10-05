@@ -172,3 +172,32 @@ def test_app_launcher_helpers():
     assert app._wait_ready(port, 5.0)                      # 서버 준비 대기
     assert urllib.request.urlopen(f"http://127.0.0.1:{port}/api/summary",
                                   timeout=2).status == 200
+
+
+# --- autostart (HKCU Run 등록) ---
+def test_autostart_roundtrip():
+    from agenttrace import autostart
+    n = "AgentTrace_pytest_tmp"
+    autostart.disable(n)
+    assert not autostart.is_enabled(n)
+    autostart.enable(n, 'echo test')
+    assert autostart.is_enabled(n)
+    autostart.disable(n)
+    assert not autostart.is_enabled(n)
+
+
+# --- 감시 루프: Sysmon 없으면 조용히 종료(앱은 계속) ---
+def test_collect_loop_stops_without_sysmon():
+    import threading, tempfile, os
+    from agenttrace import monitor_app, collector
+    from agenttrace.app import _ensure_db
+    orig = collector.collect
+    collector.collect = lambda store: (_ for _ in ()).throw(RuntimeError("no sysmon"))
+    try:
+        db = os.path.join(tempfile.mkdtemp(), "m.db"); _ensure_db(db)
+        stop = threading.Event()
+        t = threading.Thread(target=monitor_app._collect_loop, args=(db, stop), daemon=True)
+        t.start(); t.join(2)
+        assert not t.is_alive()        # RuntimeError → 즉시 종료, 멈추지 않음
+    finally:
+        collector.collect = orig
