@@ -16,6 +16,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import mcp_server, report, trace
+from ._fonts import FONTS
 
 KIND_LABEL = {"file": "파일", "mail": "메일", "message": "메시지", "memory": "메모리"}
 KIND_ICON = {"file": "file-text", "mail": "mail", "message": "message-square", "memory": "database"}
@@ -219,6 +220,7 @@ PAGE = r"""<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AgentTrace</title>
 <style>
+__FONTS__
 :root{
  --bg:#eef0f3; --surface:#ffffff; --surface2:#f4f6f8; --line:#e4e7ec;
  --fg:#111827; --mut:#6b7280; --brand:#2563eb; --brand-ink:#1d4ed8;
@@ -237,7 +239,7 @@ PAGE = r"""<!doctype html><html lang="ko"><head><meta charset="utf-8">
 *{box-sizing:border-box}
 .licon{vertical-align:-.18em;flex:none}
 body{margin:0;background:var(--bg);color:var(--fg);
- font:15px/1.6 "Pretendard",system-ui,"Segoe UI","Malgun Gothic",sans-serif}
+ font:15px/1.6 'IBM Plex Sans KR',"Pretendard",system-ui,"Malgun Gothic",sans-serif}
 .app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
 /* sidebar */
 aside{background:var(--surface);border-right:1px solid var(--line);
@@ -314,7 +316,7 @@ h1.page{font-size:34px;font-weight:800;margin:0 0 6px}
  border-radius:12px;padding:14px 16px;flex:0 0 auto}
 .fnode.infected{border-color:var(--danger)}
 .fnode.origin{border-color:var(--origin);background:var(--origin-bg)}
-.fnode .k{font-size:12px;color:var(--mut)} .fnode .nm{font-weight:700;font-family:ui-monospace,monospace;
+.fnode .k{font-size:12px;color:var(--mut)} .fnode .nm{font-weight:700;font-family:'IBM Plex Mono',ui-monospace,monospace;
  font-size:14px;word-break:break-all;margin:3px 0 8px}
 .chip{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;margin-right:4px}
 .chip.start{background:var(--origin-bg);color:var(--origin)}
@@ -339,7 +341,7 @@ details{background:var(--surface2);border:1px solid var(--line);border-radius:10
 details summary{cursor:pointer;padding:13px 0;font-weight:600;color:var(--mut)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 td,th{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--mut)} code{font-family:ui-monospace,monospace;background:var(--surface2);
+th{color:var(--mut)} code{font-family:'IBM Plex Mono',ui-monospace,monospace;background:var(--surface2);
  padding:2px 6px;border-radius:5px;font-size:13px}
 .note{color:var(--warn);font-size:13px;margin:10px 0 4px}
 .rep ul{margin:4px 0;padding-left:20px}
@@ -660,6 +662,9 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 PAGE = PAGE.replace("__LOGO__", LOGO_SVG)
+_FF = ''.join("@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:"+str(w)+";font-display:swap;src:url("+FONTS[k]+") format('woff2')}" for k,w in (('sans400',400),('sans700',700)) if k in FONTS)
+_FF += ''.join("@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:"+str(w)+";font-display:swap;src:url("+FONTS[k]+") format('woff2')}" for k,w in (('mono400',400),('mono500',500)) if k in FONTS)
+PAGE = PAGE.replace("__FONTS__", _FF)
 import json as _json
 PAGE = PAGE.replace("__ICONS__", _json.dumps(ICONS, ensure_ascii=False))
 
