@@ -1,11 +1,15 @@
-networkx>=3.0
+# 필수 (core)
 PyYAML>=6.0
 
-# 선택: MCP 서버 (읽기 전용 조회)
-mcp>=2.0
+# 선택: MCP 조회 서버
+# mcp>=2.0
 
 # 선택: 임베딩 백엔드 (문장 변형 웜 보완). 없으면 stdlib 코사인 폴백
 # sentence-transformers>=2.2
+
+# 선택: 데스크톱 앱 창 + 단일 exe 패키징
+# pywebview>=5.0
+# pyinstaller>=6.0
 
 # dev
 pytest>=7.0

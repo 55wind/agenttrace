@@ -157,3 +157,18 @@ def test_dashboard_incident_detail():
                       (d["trace"]["origin"],)).fetchone()[0] == "inbox/1"
     assert len(d["nodes"]) == 2 and any(n["from_internet"] for n in d["nodes"])
     assert "관찰 사실" in d["report"] and d["timeline"]
+
+
+# --- desktop 런처 helper ---
+def test_app_launcher_helpers():
+    import os, tempfile, threading, socket, urllib.request
+    from agenttrace import app
+    from agenttrace.dashboard import serve
+    port = app._free_port()
+    assert 1024 < port < 65536
+    db = os.path.join(tempfile.mkdtemp(), "app.db")
+    app._ensure_db(db); assert os.path.exists(db)          # 빈 DB라도 생성
+    threading.Thread(target=serve, args=(db, port), daemon=True).start()
+    assert app._wait_ready(port, 5.0)                      # 서버 준비 대기
+    assert urllib.request.urlopen(f"http://127.0.0.1:{port}/api/summary",
+                                  timeout=2).status == 200

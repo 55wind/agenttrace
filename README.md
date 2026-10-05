@@ -5,6 +5,9 @@
 
 판정은 규칙·지문·그래프가 하고 LLM은 설명만 — **네트워크·LLM 없이 동작**합니다.
 
+**일반 사용자**: [Releases](https://github.com/55wind/agenttrace/releases)에서 `AgentTrace.exe` 받아 더블클릭 (Python 불필요).
+
+**개발자**:
 ```bash
 pip install -r requirements.txt
 python demo.py                              # 시나리오 S1~S5 재현
@@ -27,7 +30,8 @@ agenttrace/
   guard.py        실행 전 관문 (allow/ask/block)
   policy.yaml     판정 규칙
   engine.py       오염 추적·복제 탐지 (Monitor)
-  trace.py        전파 그래프·역추적 (networkx)
+  trace.py        전파 그래프·역추적 (stdlib BFS)
+  app.py          데스크톱 앱 런처 (pywebview 창 / 브라우저 폴백)
   report.py       근거 기반 4단 보고
   collector.py    Sysmon 로그 수집 (wevtutil, ID 1·3·11·13)
   embedding.py    변형 웜 보완 유사도 (임베딩 선택 / stdlib 폴백)

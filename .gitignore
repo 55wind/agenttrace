@@ -5,3 +5,6 @@ __pycache__/
 .venv/
 data/
 .gstack/
+build/
+dist/
+*.spec
