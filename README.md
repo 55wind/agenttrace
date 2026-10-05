@@ -5,7 +5,9 @@
 
 판정은 규칙, 지문, 그래프가 하고 LLM은 설명만, **네트워크, LLM 없이 동작**합니다.
 
-**일반 사용자**: [Releases](https://github.com/55wind/agenttrace/releases)에서 `AgentTrace.exe` 받아 더블클릭 (Python 불필요).
+**일반 사용자**: [Releases](https://github.com/55wind/agenttrace/releases)에서 받아 더블클릭 (Python 불필요).
+- `AgentTrace-v0.1.1-win.zip` 권장: 압축을 풀고 "데모로 실행.bat" 을 더블클릭하면 예시 화면이 채워진 상태로 열립니다. 실제 사용은 `AgentTrace.exe` 더블클릭.
+- `AgentTrace.exe` 단독: 처음에는 기록이 비어 "안전합니다" 상태로 시작합니다.
 
 **개발자**:
 ```bash
