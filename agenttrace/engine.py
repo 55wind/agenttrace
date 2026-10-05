@@ -77,6 +77,7 @@ class Monitor:
                 self.store.add_replication(src_id, replica_id, sim, d, next_action, eid)
                 newly = not self.store.artifact(replica_id)["infected"]
                 self.store.set_flag(replica_id, infected=True)
+                self.store.set_flag(src_id, infected=True)   # 전파 원본(페이로드 운반체)도 감염으로 집계
                 if newly:
                     # open a stub incident; trace.analyze fills origin+scope on query
                     self.store.add_incident("replication", [eid], src_id, [replica_id])

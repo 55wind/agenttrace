@@ -273,6 +273,19 @@ def dismiss_mismatch(db_path, session):
     return {"ok": True}
 
 
+def collect_now(db_path):
+    """Sysmon 기록을 지금 한 번 수집(수동). 트레이 앱은 주기적으로도 수집한다."""
+    from . import collector
+    s = Store(db_path)
+    try:
+        n = collector.collect(s)
+        return {"collected": n}
+    except RuntimeError:
+        return {"error": "Sysmon 미설치 또는 관리자 권한 필요"}
+    finally:
+        s.db.close()
+
+
 def autoruns():
     """자동 실행 레지스트리 항목 조회(읽기 전용)."""
     import subprocess
@@ -498,6 +511,7 @@ window.quarantine=async id=>{const r=await post('/api/incident/'+id+'/quarantine
 window.decide=async(btn,cmd,dec)=>{await post('/api/action/decision',{command:cmd,decision:dec});const b=btn.closest('.btns');if(b)b.textContent=dec==='block'?'막음으로 처리했습니다. 이후 같은 명령은 관문이 자동으로 막습니다.':'한 번 허용으로 처리했습니다.';toast(dec==='block'?'막음 처리했습니다. 차단 목록에 추가했습니다.':'한 번 허용으로 처리했습니다.');};
 window.showAutoruns=async()=>{const r=await j('/api/autoruns');toast(r.autoruns.map(a=>a.root+'\n'+(a.text||'(없음)')).join('\n\n'),6000);};
 window.dismissMismatch=async s=>{await post('/api/integrity/dismiss',{session:s});toast('문제없음으로 표시했습니다.');go('integrity');};
+window.collectNow=async()=>{toast('Sysmon 기록을 가져오는 중…',1500);const r=await post('/api/collect',{});toast(r.error?('수집 실패: '+r.error):('Sysmon 기록 '+r.collected+'건을 가져왔습니다.'));await refreshSummary();};
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const hhmmss=ts=>new Date(ts*1000).toLocaleTimeString('ko-KR',{hour12:false});
 const when=ts=>new Date(ts*1000).toLocaleString('ko-KR',{hour12:false});
@@ -560,7 +574,7 @@ async function dashboard(){
   ['git-branch','역추적','최초 감염원과 퍼진 범위','go("threats")'],
   ['link','기록 무결성 검사','기록이 고쳐졌는지 확인','go("integrity")'],
   ['scroll-text','행동 기록','막거나 확인한 행동 보기','go("actions")'],
-  ['download','Windows 기록 수집','Sysmon에서 새 기록 가져오기','alert("Sysmon이 설치돼 있으면 트레이 앱이 주기적으로 수집합니다.")'],
+  ['download','Sysmon 기록 수집','지금 새 기록 가져오기','collectNow()'],
   ['plus','빠른 작업 추가','자주 쓰는 기능 고정','toast("이 기능은 다음 단계입니다.")']];
  const tileHtml=tiles.map(([icn,t,d,act],i)=>`<div class="tile ${i===5?'add':''}" ${act?`onclick='${act}'`:''}>
   <div class="ic">${ic(icn,26)}</div><b>${t}</b><span>${d}</span></div>`).join('');
@@ -775,6 +789,8 @@ class _Handler(BaseHTTPRequestHandler):
                     self.db_path, data.get("command", ""), data.get("decision", "")), ensure_ascii=False))
             if p == "/api/integrity/dismiss":
                 return self._send(json.dumps(dismiss_mismatch(self.db_path, data.get("session", "")), ensure_ascii=False))
+            if p == "/api/collect":
+                return self._send(json.dumps(collect_now(self.db_path), ensure_ascii=False))
         except Exception as e:
             return self._send(json.dumps({"error": str(e)}, ensure_ascii=False))
         self.send_error(404)
