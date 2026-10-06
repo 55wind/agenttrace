@@ -17,7 +17,8 @@ from .dashboard import serve
 from .store import Store
 from . import collector
 
-COLLECT_EVERY = 10          # 초. Sysmon 폴링 주기
+# 상시 수집 간격(초). 새 Sysmon 이벤트만 증분 수집하므로 짧게 둬도 가볍다.
+COLLECT_INTERVAL = float(os.environ.get("AGENTTRACE_COLLECT_INTERVAL", "1.0"))
 
 # 개인 사용자 기본 저장 위치: 홈\AgentTrace\agenttrace.db
 DEFAULT_DB = os.path.join(os.path.expanduser("~"), "AgentTrace", "agenttrace.db")
@@ -50,15 +51,10 @@ def _wait_ready(port, timeout=5.0):
 
 
 def _collect_loop(db_path, stop):
-    """Sysmon 이벤트를 주기적으로 수집. 미설치면 조용히 종료(앱은 계속)."""
+    """Sysmon 이벤트를 상시(실시간에 준하는) 증분 수집. 미설치면 조용히 종료(앱은 계속)."""
     store = Store(db_path)
     try:
-        while not stop.is_set():
-            try:
-                collector.collect(store)
-            except RuntimeError:
-                return      # Sysmon 없음 → OS 수집 비활성, 나머지는 동작
-            stop.wait(COLLECT_EVERY)
+        collector.watch(store, interval=COLLECT_INTERVAL, stop=stop)
     finally:
         store.db.close()
 

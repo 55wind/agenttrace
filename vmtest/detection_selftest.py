@@ -126,7 +126,7 @@ def test_integrity_detects_tampering():
 
 
 def test_sysmon_collection():
-    print("\n== 4) Sysmon 주기적 수집(폴링): 실제 OS 이벤트를 가져오는가 ==")
+    print("\n== 4) Sysmon 수집: 실제 OS 이벤트를 가져오는가 ==")
     store = Store()
     try:
         n = collector.collect(store, count=30)

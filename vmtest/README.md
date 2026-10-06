@@ -3,7 +3,7 @@
 AgentTrace가 실제로 동작하는지 확인하는 키트입니다. 두 가지로 나뉩니다.
 
 - **호스트/VM 어디서나 바로**: 실행 전 관문 차단, 웜 복제 탐지, 역추적
-- **VM(또는 Sysmon 설치) 필요**: OS 행동 주기적 수집(폴링), 실제 에이전트 훅 연동
+- **VM(또는 Sysmon 설치) 필요**: OS 행동 상시 수집, 실제 에이전트 훅 연동
 
 > 제안서 §A대로 격리된 Windows 11 VM에서 테스트하세요. 시작 전 **스냅샷**을 찍어두면
 > 끝나고 원상 복구하기 쉽습니다. 모든 페이로드는 무해합니다(표식 파일 생성, 네트워크 없음).
@@ -38,7 +38,7 @@ python vmtest\detection_selftest.py
 
 ---
 
-## 2. Sysmon 주기적 수집(폴링) (관리자 권한)
+## 2. Sysmon 상시 수집 (관리자 권한)
 
 관리자 PowerShell에서:
 
@@ -54,7 +54,7 @@ python vmtest\detection_selftest.py
 대시보드로 보려면:
 
 ```
-python -m agenttrace.monitor_app      # 트레이 상주 + 10초마다 Sysmon 수집
+python -m agenttrace.monitor_app      # 트레이 상주 + Sysmon 상시 증분 수집(기본 1초)
 ```
 
 제거: `%TEMP%\agenttrace_sysmon\Sysmon64.exe -u`

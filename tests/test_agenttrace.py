@@ -100,7 +100,7 @@ def test_embedding_fallback_beats_reordering():
 # --- collector (Sysmon wevtutil XML 파싱) ---
 _SYSMON_XML = (
     '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
-    '<System><EventID>13</EventID></System>'
+    '<System><EventID>13</EventID><EventRecordID>42</EventRecordID></System>'
     '<EventData>'
     r'<Data Name="Image">C:\evil.exe</Data>'
     '<Data Name="ProcessGuid">{abc-123}</Data>'
@@ -114,6 +114,7 @@ def test_collector_parses_sysmon_xml():
     assert len(evs) == 1
     e = evs[0]
     assert e["event_id"] == 13 and e["process_guid"] == "{abc-123}"
+    assert e["record_id"] == 42                      # 상시 수집 북마크용
     assert e["image"] == r"C:\evil.exe"
     assert e["data"]["TargetObject"].endswith(r"Run\evil")
 
@@ -186,21 +187,52 @@ def test_autostart_roundtrip():
     assert not autostart.is_enabled(n)
 
 
-# --- 감시 루프: Sysmon 없으면 조용히 종료(앱은 계속) ---
+# --- 상시 수집 루프: Sysmon 없으면 조용히 종료(앱은 계속) ---
 def test_collect_loop_stops_without_sysmon():
     import threading, tempfile, os
     from agenttrace import monitor_app, collector
     from agenttrace.app import _ensure_db
-    orig = collector.collect
-    collector.collect = lambda store: (_ for _ in ()).throw(RuntimeError("no sysmon"))
+    orig = collector.query_sysmon
+    collector.query_sysmon = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no sysmon"))
     try:
         db = os.path.join(tempfile.mkdtemp(), "m.db"); _ensure_db(db)
         stop = threading.Event()
         t = threading.Thread(target=monitor_app._collect_loop, args=(db, stop), daemon=True)
         t.start(); t.join(2)
-        assert not t.is_alive()        # RuntimeError → 즉시 종료, 멈추지 않음
+        assert not t.is_alive()        # Sysmon 없음 → watch 즉시 종료, 멈추지 않음
     finally:
-        collector.collect = orig
+        collector.query_sysmon = orig
+
+
+# --- 상시 수집 watch: 새 이벤트만 증분 수집(중복 없음) ---
+def test_watch_incremental_dedup(monkeypatch=None):
+    import threading
+    from agenttrace import Store, collector
+    # 가짜 Sysmon: 첫 조회 ID 1,2(관심 1만), 그다음 ID 3(관심 11) 반환 후 멈춤
+    batches = [
+        [{"event_id": 1, "record_id": 1, "process_guid": None, "image": "a.exe", "data": {}},
+         {"event_id": 5, "record_id": 2, "process_guid": None, "image": "x.exe", "data": {}}],
+        [{"event_id": 11, "record_id": 3, "process_guid": None, "image": "b.exe", "data": {}}],
+    ]
+    calls = {"i": 0}
+    stop = threading.Event()
+    def fake_query(count=50, channel=None, after_record=None):
+        i = calls["i"]; calls["i"] += 1
+        if i >= len(batches):
+            stop.set(); return []
+        return batches[i]
+    orig = collector.query_sysmon
+    collector.query_sysmon = fake_query
+    try:
+        s = Store()
+        collector.watch(s, interval=0, stop=stop)
+        rows = [tuple(r) for r in s.db.execute(
+            "SELECT json_extract(data,'$.event_id'), json_extract(data,'$.record_id') "
+            "FROM event WHERE kind='os_event' ORDER BY id")]
+        # 관심 ID(1,11)만 저장, ID 5 제외, 중복 없음
+        assert rows == [(1, 1), (11, 3)]
+    finally:
+        collector.query_sysmon = orig
 
 
 # --- dashboard: 행동 기록 / 기록 무결성 조립 ---

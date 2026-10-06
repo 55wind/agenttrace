@@ -32,7 +32,7 @@ python vmtest/detection_selftest.py   # 관문 차단, 웜 탐지, 역추적을 
 ```
 
 위험 명령이 실제 실행 전에 막히는지(표식 파일 미생성), 실제 파일 흐름에서 웜 복제를
-탐지하고 감염원까지 역추적하는지 확인합니다. Sysmon 주기적 수집(폴링)과 실제 에이전트
+탐지하고 감염원까지 역추적하는지 확인합니다. Sysmon 상시 수집과 실제 에이전트
 (Claude Code) 훅 연동은 VM에서 [`vmtest/README.md`](vmtest/README.md)를 따라 확인하세요.
 
 ## 구조
